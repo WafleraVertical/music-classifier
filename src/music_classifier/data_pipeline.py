@@ -50,29 +50,59 @@ datos reales. Las técnicas usadas:
 - Pitch shift: cambia pitch sin cambiar velocidad.
 - Time shift: desplaza el audio en el tiempo (circular).
 """
+
 import logging
 from pathlib import Path
 
 import librosa
 import numpy as np
 
-from config import AudioConfig, AugmentationConfig, ProjectConfig
+from music_classifier.config import AudioConfig
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-# ===================================================================
-# SECCIÓN 1: Carga de audio
-# ===================================================================
-# TODO: Implementar load_audio_file()
-#   - Usar librosa.load() con sr=config.audio.sample_rate
-#   - Manejar archivos corruptos con try/except
-#   - Retornar np.ndarray con la señal de audio
-#
-# TODO: Implementar normalize_length()
-#   - Si el audio es más corto que target_samples: pad con ceros
-#   - Si es más largo: truncar
-#   - Esto garantiza que todos los audios tengan la misma longitud
+
+def load_audio_file(file_path: Path, config: AudioConfig) -> np.ndarray | None:
+    """
+    Loads audio from file and convers it to numpy array for audio processing.
+
+    Args:
+        file_path: The path of the audio file.
+        config: The configuration of the audio file.
+
+    Returns:
+        y: np.ndarray: Audio time series.
+    """
+    try:
+        y, _ = librosa.load(file_path, sr=config.sample_rate, duration=config.duration)
+        return y
+
+    except Exception as e:
+        logger.error(f"Something weird happened with {file_path}: {e}")
+        return None
+
+
+def normalize_length(y: np.ndarray, config: AudioConfig) -> np.ndarray:
+    """
+    This method normalizes the audio time series to the Audio config sample target defined.
+
+    Args:
+        y: The audio time series.
+        config: The configuration of the audio file.
+
+    Returns:
+        y: The normalized audio time series.
+    """
+    if len(y) > config.target_samples:
+        y = y[: config.target_samples]
+    elif len(y) < config.target_samples:
+        y = np.pad(y, (0, config.target_samples - len(y)), "constant")
+
+    return y
 
 
 # ===================================================================
@@ -111,6 +141,31 @@ logger = logging.getLogger(__name__)
 #   - Convertir a escala logarítmica con librosa.power_to_db()
 #   - Retornar np.ndarray de shape (n_mels, frames)
 #
+
+
+def audio_to_mel_spectrogram(y: np.ndarray, config: AudioConfig) -> np.ndarray:
+    """
+    Create the mel spectrogram using the audio time series and process to a logarithmic scale.
+
+    Args:
+        y: The audio time series.
+        config: The configuration of the audio file.
+
+    Returns:
+        mel_spec: np.ndarray  (n_mels,frames) of the mel spectrogram on a logarithmic scale.
+    """
+    mel_spec = librosa.feature.melspectrogram(
+        y=y,
+        sr=config.sample_rate,
+        n_mels=config.n_mels,
+        hop_length=config.hop_length,
+        n_fft=config.n_fft,
+    )
+    mel_spec = librosa.power_to_db(y, ref=np.max)
+
+    return mel_spec
+
+
 # TODO: Implementar normalize_spectrogram()
 #   - Opción 1 (recomendada): min-max a rango [0, 1]
 #   - Opción 2: z-score (media=0, std=1)
