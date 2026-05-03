@@ -1,55 +1,13 @@
-"""
-Módulo de carga y preprocesamiento de audio.
-
-Este módulo se encarga de:
-1. Cargar archivos de audio WAV desde el dataset.
-2. Convertir el audio crudo a espectrogramas Mel.
-3. Aplicar data augmentation (opcional).
-4. Preparar los datos para alimentar la CNN.
-
-=== FLUJO DE DATOS ===
-
-    Audio WAV (30s, 22050 Hz)
-         │
-         ▼
-    Normalización de longitud (padding/truncate)
-         │
-         ▼
-    [Augmentation opcional: noise, stretch, shift]
-         │
-         ▼
-    Mel Spectrogram (128 bandas × ~1292 frames)
-         │
-         ▼
-    Normalización (0-1 o z-score)
-         │
-         ▼
-    Tensor listo para CNN (128, 1292, 1)
-
-=== POR QUÉ MEL SPECTROGRAMS ===
-
-Un espectrograma Mel convierte audio en una "imagen" 2D donde:
-- Eje Y = frecuencia (en escala Mel, que imita percepción humana)
-- Eje X = tiempo
-- Intensidad del pixel = energía en esa frecuencia/tiempo
-
-Esto permite usar CNNs (diseñadas para imágenes) directamente
-sobre representaciones de audio. La escala Mel comprime frecuencias
-altas y expande frecuencias bajas, alineándose con cómo el oído
-humano percibe la música.
-
-=== SOBRE DATA AUGMENTATION ===
-
-GTZAN solo tiene 1000 muestras (100 por género). Esto es MUY poco
-para deep learning. Data augmentation genera variaciones artificiales
-del audio para que el modelo vea más diversidad sin necesitar más
-datos reales. Las técnicas usadas:
-
-- Ruido gaussiano: simula grabaciones en diferentes condiciones.
-- Time stretch: cambia velocidad sin cambiar pitch.
-- Pitch shift: cambia pitch sin cambiar velocidad.
-- Time shift: desplaza el audio en el tiempo (circular).
-"""
+# ==============================================================================
+# Author: Luis Eduardo Polaco
+# Description: Data loading and preprocessing pipeline for audio classification.
+#
+# Handles audio loading, length normalization, mel spectrogram extraction,
+# data augmentation (noise, time stretch, pitch shift, time shift),
+# and dataset preparation for CNN input.
+#
+# Pipeline: WAV → normalize length → [augmentation] → mel spectrogram → normalize → (n_mels, frames, 1)
+# ==============================================================================
 
 import json
 import logging
@@ -391,6 +349,7 @@ def save_processed_data(
         json.dump(label_map, f)
 
     logger.info(f"Processed data saved to {config.paths.processed}")
+
 
 # ===================================================================
 # SECCIÓN 5: Generador de datos (opcional pero recomendado)
